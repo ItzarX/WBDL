@@ -222,6 +222,40 @@
             return (match && match[2].length === 11) ? match[2] : null;
         }
 
+        function extract100thFrame(url, imgId) {
+            if (!url) return;
+            const video = document.createElement('video');
+            video.src = url;
+            video.crossOrigin = 'anonymous';
+            video.muted = true;
+            video.playsInline = true;
+
+            video.addEventListener('loadedmetadata', () => {
+                video.currentTime = 5.0; // ts just takes the frame 5 seconds in as the thumnbail
+            });
+
+            video.addEventListener('seeked', () => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth || 320;
+                    canvas.height = video.videoHeight || 180;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    const img = document.getElementById(imgId);
+                    if (img) {
+                        img.src = canvas.toDataURL('image/jpeg');
+                    }
+                } catch (err) {
+                    console.error("Could not capture frame due to a CORS restriction or encoding error: ", err);
+                }
+            });
+
+            video.addEventListener('error', (err) => {
+                console.error("Failed to load video thumbnail source:", err);
+            });
+        }
+
         function switchListTab(tab) {
             currentListTab = tab;
             document.getElementById('tab-main').classList.toggle('active', tab === 'main');
@@ -243,11 +277,18 @@
                 return;
             }
 
-            filteredDemons.forEach(demon => {
+            const nonYtVideoQueue = [];
+
+            const htmlContent = filteredDemons.map(demon => {
                 const ytId = getYTId(demon.showcase_link);
-                const thumbUrl = ytId 
-                    ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` 
-                    : '/assets/missing-thumbnail.png';
+                let thumbUrl = '/assets/missing-thumbnail.png';
+                const imgId = `thumb-${demon.id}`;
+
+                if (ytId) {
+                    thumbUrl = `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`;
+                } else if (demon.showcase_link) {
+                    nonYtVideoQueue.push({ url: demon.showcase_link, id: imgId });
+                }
 
                 let sideContentHtml = "";
 
@@ -285,11 +326,11 @@
                     `;
                 }
 
-                container.innerHTML += `
+                return `
                     <a href="/demon/${demon.id}" style="text-decoration: none; color: inherit; display: block;">
                         <div class="demon-card">
                             <div class="thumbnail-box">
-                                <img src="${thumbUrl}" alt="${demon.name} thumbnail">
+                                <img id="${imgId}" src="${thumbUrl}" alt="${demon.name} thumbnail">
                             </div>
                             <div class="card-body">
                                 <div class="card-main-content">
@@ -305,6 +346,12 @@
                         </div>
                     </a>
                 `;
+            }).join('');
+
+            container.innerHTML = htmlContent;
+
+            nonYtVideoQueue.forEach(item => {
+                extract100thFrame(item.url, item.id);
             });
         }
 
