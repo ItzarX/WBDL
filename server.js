@@ -656,8 +656,8 @@ app.post('/api/admin/add-demon', isAdmin, async (req, res) => {
             let msg = `**${name}** has been placed at **#${targetPos}**`;
             let context = [];
             
-            if (above) context.push(`below **${above}**`);
             if (below) context.push(`above **${below}**`);
+            if (above) context.push(`below **${above}**`);
 
             if (context.length > 0) msg += ", " + context.join(" and ");
             msg += ` with a list requirement of **${requirement}%**.`;
@@ -667,7 +667,7 @@ app.post('/api/admin/add-demon', isAdmin, async (req, res) => {
             if (targetPos <= 150 && old150) pushes.push(`**${old150}** to the Legacy List`);
             
             if (pushes.length > 0) {
-                msg += `\n*This pushes ${pushes.join(" and ")}.*`;
+                msg += `\nThis pushes ${pushes.join(" and ")}.`;
             }
 
             sendDiscordNotification(msg);
@@ -749,7 +749,7 @@ app.post('/api/admin/delete-demon', isAdmin, async (req, res) => {
             if (targetPos <= 150 && old151) pushes.push(`**${old151}** back to the Extended List`);
             
             if (pushes.length > 0) {
-                msg += `\n*This pushes ${pushes.join(" and ")}.*`;
+                msg += `\nThis pushes ${pushes.join(" and ")}.`;
             }
 
             sendDiscordNotification(msg);
@@ -852,8 +852,8 @@ app.post('/api/admin/move-demon', isAdmin, async (req, res) => {
             let msg = `**${levelName}** has been **${action}** to **#${newPos}**`;
             
             let context = [];
-            if (above) context.push(`below **${above}**`);
             if (below) context.push(`above **${below}**`);
+            if (above) context.push(`below **${above}**`);
 
             if (context.length > 0) msg += ", " + context.join(" and ");
             msg += ".";
@@ -868,7 +868,7 @@ app.post('/api/admin/move-demon', isAdmin, async (req, res) => {
             }
 
             if (pushes.length > 0) {
-                msg += `\n*This pushes ${pushes.join(" and ")}.*`;
+                msg += `\nThis pushes ${pushes.join(" and ")}.`;
             }
 
             sendDiscordNotification(msg);
