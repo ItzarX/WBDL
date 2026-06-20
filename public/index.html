@@ -326,17 +326,6 @@
                 height: 0;
             }
 
-            #level-viewer-placeholder {
-                height: 100%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 28px;
-                color: var(--text-muted);
-                text-align: center;
-                box-sizing: border-box;
-            }
-
             .demon-card {
                 height: 108px;
                 min-height: 108px;
@@ -458,9 +447,6 @@
         </div>
 
         <section id="level-viewer-panel" aria-label="Selected level details">
-            <div id="level-viewer-placeholder">
-                Select a level from the list to view its details and records.
-            </div>
             <iframe id="demon-frame" class="embed-frame" title="Level details" loading="lazy"></iframe>
         </section>
 
@@ -592,9 +578,6 @@
             selectedDemonId = String(id);
 
             const frame = document.getElementById('demon-frame');
-            const placeholder = document.getElementById('level-viewer-placeholder');
-
-            if (placeholder) placeholder.style.display = 'none';
             if (frame) frame.src = getEmbeddedDemonUrl(id);
         }
 
