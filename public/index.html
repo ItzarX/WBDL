@@ -27,6 +27,8 @@
     <link rel="stylesheet" href="/style.css">
     
     <style>
+        :root { --wbdl-header-height: 0px; }
+
         .page-content {
             max-width: 1000px;
             margin: 0 auto;
@@ -146,6 +148,23 @@
             color: var(--text-muted);
         }
 
+
+        .card-main-content,
+        .demon-info {
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .demon-info .b,
+        .points-row {
+            display: block;
+            max-width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: clip;
+            line-height: 1.15;
+        }
+
         .wr-badge {
             font-family: var(--font-display);
             font-size: 1.2em;
@@ -156,6 +175,226 @@
             border: 1px solid var(--border);
             white-space: nowrap;
             margin-left: 30px;
+        }
+
+
+        #level-viewer-panel,
+        .staff-iframe-panel {
+            display: none;
+        }
+
+        @media (min-width: 1500px) {
+            html,
+            body {
+                overflow-x: hidden;
+                overflow-y: auto;
+            }
+
+            footer,
+            .site-footer,
+            #global-footer {
+                margin-top: 0 !important;
+            }
+
+            .page-content {
+                max-width: none;
+                margin: 0;
+                padding: 0 20px;
+                display: grid;
+                grid-template-columns: minmax(360px, 500px) minmax(0, 1fr) 320px;
+                grid-template-rows: auto auto minmax(0, 1fr);
+                gap: 20px;
+                align-items: start;
+                height: calc(100dvh - var(--wbdl-header-height));
+                min-height: 0;
+                box-sizing: border-box;
+            }
+
+            .list-header {
+                grid-column: 3;
+                grid-row: 1;
+                text-align: left;
+                margin-top: 20px;
+                padding: 0 0 15px;
+                border-bottom: 1px solid var(--border);
+                min-height: 150px;
+                box-sizing: border-box;
+            }
+
+            .list-header h1 {
+                font-size: 2.35em;
+                min-height: 2.4em;
+                line-height: 1.15;
+                display: flex;
+                align-items: flex-start;
+            }
+
+            .list-header p {
+                max-width: none;
+                min-height: 3.2em;
+                line-height: 1.45;
+                margin: 0;
+            }
+
+            .list-tabs {
+                grid-column: 3;
+                grid-row: 2;
+                display: flex;
+                flex-direction: row;
+                gap: 10px;
+                margin: 0;
+            }
+
+            .list-tab {
+                flex: 1 1 0;
+                width: auto;
+                text-align: center;
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+
+            #list-container {
+                grid-column: 1;
+                grid-row: 1 / span 3;
+                display: flex;
+                flex-direction: column;
+                gap: 14px;
+                height: calc(100dvh - var(--wbdl-header-height));
+                max-height: calc(100dvh - var(--wbdl-header-height));
+                overflow-y: auto;
+                overscroll-behavior: contain;
+                padding: 20px 8px 20px 0;
+                box-sizing: border-box;
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+
+            #list-container::-webkit-scrollbar {
+                display: none;
+            }
+
+            #level-viewer-panel {
+                grid-column: 2;
+                grid-row: 1 / span 3;
+                display: block;
+                margin-top: 20px;
+                margin-bottom: 20px;
+                height: calc(100dvh - var(--wbdl-header-height) - 40px);
+                min-height: 420px;
+                max-height: calc(100dvh - var(--wbdl-header-height) - 40px);
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                overflow: hidden;
+                overscroll-behavior: contain;
+                box-sizing: border-box;
+            }
+
+            .staff-iframe-panel {
+                grid-column: 3;
+                grid-row: 3;
+                display: flex;
+                width: 100%;
+                min-height: 0;
+                height: 100%;
+                box-sizing: border-box;
+                overflow: hidden;
+                overscroll-behavior: contain;
+            }
+
+            #staff-frame {
+                flex: 1 1 auto;
+                width: 100%;
+                height: 100%;
+                min-height: 0;
+                pointer-events: auto;
+            }
+
+            .embed-frame {
+                width: 100%;
+                height: 100%;
+                min-height: 0;
+                border: 0;
+                display: block;
+                background: transparent;
+                overscroll-behavior: contain;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            }
+
+            .embed-frame::-webkit-scrollbar {
+                display: none;
+                width: 0;
+                height: 0;
+            }
+
+            #level-viewer-placeholder {
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 28px;
+                color: var(--text-muted);
+                text-align: center;
+                box-sizing: border-box;
+            }
+
+            .demon-card {
+                height: 108px;
+                min-height: 108px;
+                max-height: 108px;
+                box-sizing: border-box;
+                margin: 0;
+                flex-direction: row;
+                padding-left: 14px;
+            }
+
+            .thumbnail-box {
+                width: 140px;
+                height: 79px;
+                margin-left: 12px;
+            }
+
+            .card-body {
+                padding: 14px 18px;
+                flex-direction: row;
+                align-items: center;
+                gap: 12px;
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            .card-main-content {
+                width: 100%;
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            .demon-info {
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            .demon-info .b {
+                font-size: 1.05em;
+            }
+
+            .points-row {
+                font-size: 0.9em;
+            }
+
+            .rank {
+                font-size: 1.8em;
+                min-width: 48px;
+                margin-right: 14px;
+                text-align: center;
+                flex-shrink: 0;
+            }
+
+            .wr-badge {
+                margin-left: auto;
+                align-self: center;
+            }
         }
 
         @media (max-width: 768px) {
@@ -201,6 +440,17 @@
         <div id="list-container">
             <p style="text-align: center; color: #888;">Fetching levels...</p>
         </div>
+
+        <section id="level-viewer-panel" aria-label="Selected level details">
+            <div id="level-viewer-placeholder">
+                Select a level from the list to view its details and records.
+            </div>
+            <iframe id="demon-frame" class="embed-frame" title="Level details" loading="lazy"></iframe>
+        </section>
+
+        <aside class="staff-iframe-panel" aria-label="Staff">
+            <iframe id="staff-frame" class="embed-frame" title="WBDL Staff" loading="lazy" data-src="/staff?embed=1"></iframe>
+        </aside>
     </div>
 
     <script src="/nav.js"></script>
@@ -214,6 +464,118 @@
             
             document.getElementById('headline-text').innerText = "Web Browser ILL";
             document.getElementById('subheadline-text').innerText = "...the human limit of Web Dashers";
+        }
+
+        const desktopLayoutQuery = window.matchMedia('(min-width: 1500px)');
+        let selectedDemonId = '';
+
+        function updateHeaderHeightVar() {
+            const header = document.getElementById('global-nav');
+            const height = header ? Math.ceil(header.getBoundingClientRect().height) : 0;
+            document.documentElement.style.setProperty('--wbdl-header-height', `${height}px`);
+        }
+
+        function shrinkSingleLineToFit(el, minPx = 10) {
+            if (!el) return;
+
+            const computed = window.getComputedStyle(el);
+            const baseSize = Number(el.dataset.baseFontSize || parseFloat(computed.fontSize) || 16);
+            el.dataset.baseFontSize = String(baseSize);
+            el.style.fontSize = `${baseSize}px`;
+
+            let size = baseSize;
+            const maxIterations = 40;
+            let i = 0;
+
+            while (el.scrollWidth > el.clientWidth && size > minPx && i < maxIterations) {
+                size -= 0.5;
+                el.style.fontSize = `${size}px`;
+                i += 1;
+            }
+        }
+
+        function fitLevelCardText() {
+            requestAnimationFrame(() => {
+                document.querySelectorAll('.demon-info .b').forEach(el => shrinkSingleLineToFit(el, isDesktopEmbeddedLayout() ? 10 : 12));
+                document.querySelectorAll('.points-row').forEach(el => shrinkSingleLineToFit(el, isDesktopEmbeddedLayout() ? 9 : 11));
+            });
+        }
+
+        function isDesktopEmbeddedLayout() {
+            return desktopLayoutQuery.matches;
+        }
+
+        function getDirectDemonUrl(id) {
+            return `/demon/${encodeURIComponent(id)}`;
+        }
+
+        function getEmbeddedDemonUrl(id) {
+            return `${getDirectDemonUrl(id)}?embed=1`;
+        }
+
+        function ensureStaffFrameLoaded() {
+            if (!isDesktopEmbeddedLayout()) return;
+            const staffFrame = document.getElementById('staff-frame');
+            if (staffFrame && !staffFrame.src) {
+                staffFrame.src = staffFrame.dataset.src || '/staff?embed=1';
+            }
+        }
+
+        function setEmbeddedDemon(id) {
+            if (!id) return;
+            selectedDemonId = String(id);
+
+            const frame = document.getElementById('demon-frame');
+            const placeholder = document.getElementById('level-viewer-placeholder');
+
+            if (placeholder) placeholder.style.display = 'none';
+            if (frame) frame.src = getEmbeddedDemonUrl(id);
+        }
+
+        function selectDemon(id) {
+            if (!isDesktopEmbeddedLayout()) {
+                window.open(getDirectDemonUrl(id), '_blank', 'noopener');
+                return;
+            }
+
+            setEmbeddedDemon(id);
+        }
+
+
+
+        function removeStaleIdParamFromUrl() {
+            const url = new URL(window.location.href);
+            if (!url.searchParams.has('id')) return;
+
+            url.searchParams.delete('id');
+            const next = `${url.pathname}${url.search}${url.hash}`;
+            window.history.replaceState({}, '', next || url.pathname);
+        }
+
+        function getDefaultSelectedDemonId() {
+            const filteredDemons = allDemons.filter(d => {
+                if (currentListTab === 'main') return Number(d.position) <= 150;
+                return Number(d.position) > 150;
+            });
+
+            return filteredDemons.length ? String(filteredDemons[0].id) : '';
+        }
+
+        function ensureDefaultDemonSelected() {
+            if (!isDesktopEmbeddedLayout()) return;
+
+            const selectedId = selectedDemonId || getDefaultSelectedDemonId();
+            if (selectedId) setEmbeddedDemon(selectedId);
+        }
+
+        function syncEmbeddedLayout() {
+            updateHeaderHeightVar();
+            ensureStaffFrameLoaded();
+            renderDemons();
+
+            if (isDesktopEmbeddedLayout()) {
+                ensureDefaultDemonSelected();
+            }
         }
 
         function getYTId(url) {
@@ -262,6 +624,11 @@
             document.getElementById('tab-main').classList.toggle('active', tab === 'main');
             document.getElementById('tab-legacy').classList.toggle('active', tab === 'legacy');
             renderDemons();
+
+            if (isDesktopEmbeddedLayout()) {
+                const defaultId = getDefaultSelectedDemonId();
+                if (defaultId) setEmbeddedDemon(defaultId);
+            }
         }
 
         function renderDemons() {
@@ -331,8 +698,14 @@
                 const showPoints = !isImpossibleList && showPlacement;
                 const rankHtml = showPlacement ? `<span class="rank">#${demon.position}</span>` : '';
 
+                const directUrl = getDirectDemonUrl(demon.id);
+                const embeddedUrl = getEmbeddedDemonUrl(demon.id);
+                const linkAttrs = isDesktopEmbeddedLayout()
+                    ? `href="${embeddedUrl}" onclick="selectDemon('${demon.id}'); return false;"`
+                    : `href="${directUrl}" target="_blank" rel="noopener"`;
+
                 return `
-                    <a href="/demon/${demon.id}" style="text-decoration: none; color: inherit; display: block;">
+                    <a ${linkAttrs} style="text-decoration: none; color: inherit; display: block;">
                         <div class="demon-card">
                             <div class="thumbnail-box">
                                 <img id="${imgId}" src="${thumbUrl}" alt="${demon.name} thumbnail">
@@ -354,6 +727,7 @@
             }).join('');
 
             container.innerHTML = htmlContent;
+            fitLevelCardText();
 
             nonYtVideoQueue.forEach(item => {
                 extract100thFrame(item.url, item.id);
@@ -370,13 +744,42 @@
                     document.getElementById('list-tabs-container').style.display = 'flex';
                 }
 
+                updateHeaderHeightVar();
                 renderDemons();
+                ensureStaffFrameLoaded();
+
+                if (isDesktopEmbeddedLayout()) {
+                    ensureDefaultDemonSelected();
+                }
             } catch (err) {
                 console.error(err);
                 document.getElementById('list-container').innerHTML = `<p style="color:red; text-align:center;">Failed to load list.</p>`;
             }
         }
 
+        if (desktopLayoutQuery.addEventListener) {
+            desktopLayoutQuery.addEventListener('change', syncEmbeddedLayout);
+        } else if (desktopLayoutQuery.addListener) {
+            desktopLayoutQuery.addListener(syncEmbeddedLayout);
+        }
+
+
+        window.addEventListener('load', () => {
+            updateHeaderHeightVar();
+            fitLevelCardText();
+        });
+
+        window.addEventListener('resize', () => {
+            updateHeaderHeightVar();
+            fitLevelCardText();
+        });
+
+        requestAnimationFrame(() => {
+            updateHeaderHeightVar();
+            fitLevelCardText();
+        });
+
+        removeStaleIdParamFromUrl();
         loadDemons();
     </script>
 </body>
