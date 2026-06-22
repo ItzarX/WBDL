@@ -755,7 +755,7 @@ app.post('/api/admin/add-demon', isAdmin, async (req, res) => {
     }
 });
 
-app.post('/api/admin/delete-demon', isAdmin, async (req, res) => {
+app.post('/api/admin/delete-demon', isOwner, async (req, res) => {
     const { id, position } = req.body;
     const list = req.currentList === 'impossible' ? 'impossible' : 'primary';
     const actorId = req.session.userId;
