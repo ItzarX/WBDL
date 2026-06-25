@@ -1041,7 +1041,12 @@
                 return;
             }
 
-            const res = await fetch(`/api/demons/${dbKey}`);
+            const timeMachineDate = embedParams.get('date') || '';
+            const demonApiUrl = timeMachineDate
+                ? `/api/demons/${dbKey}?date=${encodeURIComponent(timeMachineDate)}`
+                : `/api/demons/${dbKey}`;
+
+            const res = await fetch(demonApiUrl);
             if (!res.ok) {
                 levelNotFound();
                 return;

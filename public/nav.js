@@ -1,12 +1,215 @@
+
+const TIME_MACHINE_MIN_DATE = '2026-06-15';
+
+function getTodayDateInputValue() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function parseDateInputValue(value) {
+    const raw = String(value || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+
+    const date = new Date(`${raw}T12:00:00`);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isValidTimeMachineDate(value) {
+    const selected = parseDateInputValue(value);
+    if (!selected) return false;
+
+    const min = parseDateInputValue(TIME_MACHINE_MIN_DATE);
+    const max = parseDateInputValue(getTodayDateInputValue());
+
+    return selected >= min && selected <= max;
+}
+
+function removeTimeMachineParamsFromUrl() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('date');
+    url.searchParams.delete('timemachine');
+
+    const next = `${url.pathname}${url.search}${url.hash}`;
+    return next || '/';
+}
+
+function redirectInvalidTimeMachineDate() {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('date')) return false;
+
+    const date = params.get('date');
+    if (isValidTimeMachineDate(date)) return false;
+
+    window.location.replace(removeTimeMachineParamsFromUrl());
+    return true;
+}
+
+function formatTimeMachineDate(dateValue) {
+    const date = parseDateInputValue(dateValue);
+    if (!date) return dateValue || '';
+
+    return date.toLocaleDateString(undefined, {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+    });
+}
+
+function getCurrentTimeMachineDate() {
+    const params = new URLSearchParams(window.location.search);
+    const date = params.get('date');
+    return isValidTimeMachineDate(date) ? date : '';
+}
+
+function openTimeMachineDatePicker(event) {
+    const input = document.getElementById('time-machine-date');
+    if (!input) return;
+
+    if (event && event.target !== input) {
+        event.preventDefault();
+    }
+
+    input.focus();
+
+    if (typeof input.showPicker === 'function') {
+        try {
+            input.showPicker();
+        } catch (err) {}
+    }
+}
+
+function isIndexPage() {
+    const path = window.location.pathname.replace(/\/+$/, '') || '/';
+    return path === '/';
+}
+
+function ensureTimeMachinePopup() {
+    if (document.getElementById('time-machine-overlay')) return;
+
+    const currentParams = new URLSearchParams(window.location.search);
+    const selectedDate = currentParams.get('date') || getTodayDateInputValue();
+    const maxDate = getTodayDateInputValue();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'time-machine-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.72);backdrop-filter:blur(4px);padding:20px;box-sizing:border-box;';
+    overlay.innerHTML = `
+        <div style="width:min(420px,100%);background:var(--surface,#161616);border:1px solid var(--border,#333);border-radius:var(--radius,14px);box-shadow:0 20px 70px rgba(0,0,0,0.55);padding:22px;box-sizing:border-box;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px;">
+                <h2 style="margin:0;color:var(--text,#fff);font-size:1.35rem;">Time Machine</h2>
+                <button type="button" onclick="closeTimeMachine()" aria-label="Close" style="background:transparent;border:0;color:var(--text-muted,#888);font-size:1.6rem;line-height:1;cursor:pointer;">&times;</button>
+            </div>
+            <p style="margin:0 0 14px;color:var(--text-muted,#888);line-height:1.45;font-size:0.95rem;">
+                IS THAT A GEOMETRY DASH REFERENCE?!?!?!
+            </p>
+            <label for="time-machine-date" style="display:block;color:var(--text,#fff);font-weight:800;margin-bottom:7px;">Date</label>
+            <div onclick="openTimeMachineDatePicker(event)" style="width:100%;padding:0;background:var(--bg,#111);border:1px solid var(--border,#333);border-radius:var(--radius-sm,8px);box-sizing:border-box;cursor:pointer;">
+                <input id="time-machine-date" type="date" min="${TIME_MACHINE_MIN_DATE}" max="${maxDate}" value="${isValidTimeMachineDate(selectedDate) ? selectedDate : maxDate}" onclick="openTimeMachineDatePicker(event)" onfocus="openTimeMachineDatePicker(event)" style="width:100%;padding:12px 13px;background:transparent;border:0;color:var(--text,#fff);font:inherit;box-sizing:border-box;cursor:pointer;user-select:none;">
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;flex-wrap:wrap;">
+                <button type="button" onclick="resetTimeMachine()" style="padding:10px 14px;border-radius:var(--radius-sm,8px);border:1px solid var(--border,#333);background:var(--surface-2,#222);color:var(--text,#fff);font-weight:800;cursor:pointer;">Reset</button>
+                <button type="button" onclick="applyTimeMachineFromPopup()" style="padding:10px 14px;border-radius:var(--radius-sm,8px);border:0;background:var(--accent,#00e676);color:#000;font-weight:900;cursor:pointer;">Go</button>
+            </div>
+        </div>
+    `;
+
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) closeTimeMachine();
+    });
+
+    document.body.appendChild(overlay);
+}
+
+function openTimeMachine() {
+    if (!isIndexPage()) {
+        window.location.href = '/?timemachine=1';
+        return;
+    }
+
+    ensureTimeMachinePopup();
+    const overlay = document.getElementById('time-machine-overlay');
+    if (overlay) overlay.style.display = 'flex';
+}
+
+function closeTimeMachine() {
+    const overlay = document.getElementById('time-machine-overlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+function applyTimeMachineFromPopup() {
+    const input = document.getElementById('time-machine-date');
+    const date = input ? input.value : '';
+
+    if (!date) return;
+
+    if (!isValidTimeMachineDate(date)) {
+        window.location.href = removeTimeMachineParamsFromUrl();
+        return;
+    }
+
+    if (typeof window.applyTimeMachineDate === 'function') {
+        window.applyTimeMachineDate(date);
+        closeTimeMachine();
+        return;
+    }
+
+    window.location.href = `/?date=${encodeURIComponent(date)}`;
+}
+
+function resetTimeMachine() {
+    if (typeof window.applyTimeMachineDate === 'function') {
+        window.applyTimeMachineDate('');
+        closeTimeMachine();
+        return;
+    }
+
+    window.location.href = removeTimeMachineParamsFromUrl();
+}
+
+function openTimeMachineFromQuery() {
+    if (redirectInvalidTimeMachineDate()) return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('timemachine') === '1') {
+        openTimeMachine();
+    }
+}
+
+
+function renderTimeMachineNavbar(navContainer, date) {
+    navContainer.innerHTML = `
+        <nav style="width: 100%; min-height: 59px; display: flex; justify-content: center; align-items: center; gap: 14px; padding: 14px 30px; background: var(--surface); border-bottom: 1px solid var(--border); box-sizing: border-box; text-align: center; flex-wrap: wrap;">
+            <span style="color: var(--text); font-weight: 600;">
+                You are viewing the list as it was in ${formatTimeMachineDate(date)}
+            </span>
+            <button type="button" onclick="resetTimeMachine()" style="padding: 7px 13px; border-radius: var(--radius-sm, 8px); border: 0; background: var(--accent); color: #000; cursor: pointer; font: inherit; font-weight: 900;">
+                Back to present
+            </button>
+        </nav>
+    `;
+}
+
 async function loadNavbar() {
     const navContainer = document.getElementById('global-nav');
     if (!navContainer) return;
+
+    if (redirectInvalidTimeMachineDate()) return;
+
+    const activeTimeMachineDate = getCurrentTimeMachineDate();
 
     const res = await fetch('/api/me');
 
     if (res.status === 429) {
         const rateLimited = await fetch('/ratelimited.html');
         document.documentElement.innerHTML = await rateLimited.text();
+        return;
+    }
+
+    if (activeTimeMachineDate) {
+        renderTimeMachineNavbar(navContainer, activeTimeMachineDate);
         return;
     }
 
@@ -76,6 +279,7 @@ async function loadNavbar() {
                 </a>
                 <a href="/leaderboard" style="${navLink}">Leaderboard</a>
                 <a href="/changelog" style="${navLink}">Changelog</a>
+                <button type="button" onclick="openTimeMachine()" style="${navLink} background: transparent; border: 0; padding: 0; cursor: pointer; font-family: inherit;">Time Machine</button>
                 ${listSwapLink}
             </div>
             <div id="user-nav">${userSection}</div>
@@ -101,7 +305,6 @@ async function loadFooter() {
         document.body.appendChild(footerContainer);
     }
 
-    // Modern spacing separation from page bounds
     footerContainer.style.width = "100%";
     footerContainer.style.display = "flex";
     footerContainer.style.justifyContent = "center";
@@ -139,7 +342,7 @@ async function loadFooter() {
     `;
 }
 
-loadNavbar();
+loadNavbar().then(openTimeMachineFromQuery);
 loadFooter();
 
 async function updateNotiBadge() {

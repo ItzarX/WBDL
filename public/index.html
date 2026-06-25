@@ -92,6 +92,12 @@
             overflow: hidden;
         }
 
+
+        .demon-card.time-machine-placeholder {
+            opacity: 0.72;
+            border-style: dashed;
+            cursor: default;
+        }
         .demon-card:hover {
             background: var(--surface-2);
             border-color: var(--accent);
@@ -461,6 +467,46 @@
         let allDemons = [];
         let currentListTab = 'main';
 
+        function parseDateInputValue(value) {
+            const raw = String(value || '').trim();
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+
+            const date = new Date(`${raw}T12:00:00`);
+            return Number.isNaN(date.getTime()) ? null : date;
+        }
+
+        function getTodayDateInputValue() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function isValidTimeMachineDate(value) {
+            const selected = parseDateInputValue(value);
+            if (!selected) return false;
+
+            const min = parseDateInputValue('2026-06-15');
+            const max = parseDateInputValue(getTodayDateInputValue());
+
+            return selected >= min && selected <= max;
+        }
+
+        function removeInvalidTimeMachineDateFromUrl() {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('date');
+            url.searchParams.delete('timemachine');
+            window.location.replace(`${url.pathname}${url.search}${url.hash}` || '/');
+        }
+
+        const rawTimeMachineDate = new URLSearchParams(window.location.search).get('date') || '';
+        if (rawTimeMachineDate && !isValidTimeMachineDate(rawTimeMachineDate)) {
+            removeInvalidTimeMachineDateFromUrl();
+        }
+
+        let timeMachineDate = isValidTimeMachineDate(rawTimeMachineDate) ? rawTimeMachineDate : '';
+
         if (isImpossibleList) {
             document.body.classList.add('impossible-list');
             
@@ -527,6 +573,58 @@
             });
         }
 
+
+        function isTimeMachinePlaceholder(demon = {}) {
+            return Boolean(demon.time_machine_deleted_placeholder);
+        }
+
+        function getDemonsApiUrl() {
+            return timeMachineDate && isValidTimeMachineDate(timeMachineDate)
+                ? `/api/demons?date=${encodeURIComponent(timeMachineDate)}`
+                : '/api/demons';
+        }
+
+        function formatTimeMachineDate(dateValue) {
+            if (!dateValue) return '';
+            const date = new Date(`${dateValue}T12:00:00`);
+            if (Number.isNaN(date.getTime())) return dateValue;
+
+            return date.toLocaleDateString(undefined, {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
+
+        function updateTimeMachineStatus() {
+            if (typeof loadNavbar === 'function') {
+                loadNavbar();
+            }
+        }
+
+        window.applyTimeMachineDate = function applyTimeMachineDate(date) {
+            if (date && !isValidTimeMachineDate(date)) {
+                removeInvalidTimeMachineDateFromUrl();
+                return;
+            }
+
+            timeMachineDate = date || '';
+
+            const url = new URL(window.location.href);
+            url.searchParams.delete('timemachine');
+
+            if (timeMachineDate) {
+                url.searchParams.set('date', timeMachineDate);
+            } else {
+                url.searchParams.delete('date');
+            }
+
+            window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`);
+            selectedDemonId = '';
+            updateTimeMachineStatus();
+            loadDemons();
+        };
+
         function shrinkSingleLineToFit(el, minPx = 10) {
             if (!el) return;
 
@@ -557,12 +655,27 @@
             return desktopLayoutQuery.matches;
         }
 
+        function getDemonUrl(id, params = {}) {
+            const url = new URL(`/demon/${encodeURIComponent(id)}`, window.location.origin);
+
+            Object.entries(params).forEach(([key, value]) => {
+                if (value !== undefined && value !== null && value !== '') {
+                    url.searchParams.set(key, value);
+                }
+            });
+
+            return `${url.pathname}${url.search}`;
+        }
+
         function getDirectDemonUrl(id) {
-            return `/demon/${encodeURIComponent(id)}`;
+            return getDemonUrl(id, timeMachineDate ? { date: timeMachineDate } : {});
         }
 
         function getEmbeddedDemonUrl(id) {
-            return `${getDirectDemonUrl(id)}?embed=1`;
+            return getDemonUrl(id, {
+                embed: '1',
+                ...(timeMachineDate ? { date: timeMachineDate } : {})
+            });
         }
 
         function ensureStaffFrameLoaded() {
@@ -607,7 +720,8 @@
                 return Number(d.position) > 150;
             });
 
-            return filteredDemons.length ? String(filteredDemons[0].id) : '';
+            const selectableDemon = filteredDemons.find(d => !isTimeMachinePlaceholder(d) && d.id);
+            return selectableDemon ? String(selectableDemon.id) : '';
         }
 
         function ensureDefaultDemonSelected() {
@@ -690,16 +804,17 @@
             });
 
             if (filteredDemons.length === 0) {
-                container.innerHTML = `<p style="text-align: center; color: var(--text-muted); margin-top: 20px;">No levels currently exist in this section.</p>`;
+                container.innerHTML = `<p style="text-align: center; color: var(--text-muted); margin-top: 20px;">No levels exist here...</p>`;
                 return;
             }
 
             const nonYtVideoQueue = [];
 
             const htmlContent = filteredDemons.map(demon => {
+                const isPlaceholder = isTimeMachinePlaceholder(demon);
                 const ytId = getYTId(demon.showcase_link);
                 let thumbUrl = '/assets/missing-thumbnail.png';
-                const imgId = `thumb-${demon.id}`;
+                const imgId = `thumb-${isPlaceholder ? `placeholder-${demon.position}` : demon.id}`;
 
                 if (ytId) {
                     thumbUrl = `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`;
@@ -747,32 +862,36 @@
                 const showPoints = !isImpossibleList && showPlacement;
                 const rankHtml = showPlacement ? `<span class="rank">#${demon.position}</span>` : '';
 
+                const cardHtml = `
+                    <div class="demon-card ${isPlaceholder ? 'time-machine-placeholder' : ''}">
+                        <div class="thumbnail-box">
+                            <img id="${imgId}" src="${thumbUrl}" alt="${demon.name} thumbnail">
+                        </div>
+                        <div class="card-body">
+                            <div class="card-main-content">
+                                ${rankHtml}
+                                <div class="demon-info">
+                                    <span class="b">${demon.name}</span>
+                                    <div style="color: var(--text-muted); font-size: 0.85em; margin-top: 4px;">${isPlaceholder ? 'This level has since been removed' : `published by ${demon.author}`}</div>
+                                    ${showPoints && !isPlaceholder ? sideContentHtml : ''}
+                                </div>
+                            </div>
+                            ${isImpossibleList && !isPlaceholder ? sideContentHtml : ''}
+                        </div>
+                    </div>
+                `;
+
+                if (isPlaceholder) {
+                    return `<div style="text-decoration: none; color: inherit; display: block;">${cardHtml}</div>`;
+                }
+
                 const directUrl = getDirectDemonUrl(demon.id);
                 const embeddedUrl = getEmbeddedDemonUrl(demon.id);
                 const linkAttrs = isDesktopEmbeddedLayout()
                     ? `href="${embeddedUrl}" onclick="selectDemon('${demon.id}'); return false;"`
                     : `href="${directUrl}" target="_blank" rel="noopener"`;
 
-                return `
-                    <a ${linkAttrs} style="text-decoration: none; color: inherit; display: block;">
-                        <div class="demon-card">
-                            <div class="thumbnail-box">
-                                <img id="${imgId}" src="${thumbUrl}" alt="${demon.name} thumbnail">
-                            </div>
-                            <div class="card-body">
-                                <div class="card-main-content">
-                                    ${rankHtml}
-                                    <div class="demon-info">
-                                        <span class="b">${demon.name}</span>
-                                        <div style="color: var(--text-muted); font-size: 0.85em; margin-top: 4px;">published by ${demon.author}</div>
-                                        ${showPoints ? sideContentHtml : ''}
-                                    </div>
-                                </div>
-                                ${isImpossibleList ? sideContentHtml : ''}
-                            </div>
-                        </div>
-                    </a>
-                `;
+                return `<a ${linkAttrs} style="text-decoration: none; color: inherit; display: block;">${cardHtml}</a>`;
             }).join('');
 
             container.innerHTML = htmlContent;
@@ -785,12 +904,13 @@
 
         async function loadDemons() {
             try {
-                const response = await fetch('/api/demons');
+                const response = await fetch(getDemonsApiUrl());
                 allDemons = await response.json();
+                updateTimeMachineStatus();
 
-                const hasLegacy = allDemons.some(d => d.position > 150);
-                if (hasLegacy) {
-                    document.getElementById('list-tabs-container').style.display = 'flex';
+                const tabsContainer = document.getElementById('list-tabs-container');
+                if (tabsContainer) {
+                    tabsContainer.style.display = 'flex';
                 }
 
                 updateHeaderHeightVar();

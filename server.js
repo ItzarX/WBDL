@@ -120,6 +120,202 @@ async function getEstimatedLevelUploadDate(levelId) {
     }
 }
 
+
+const TIME_MACHINE_MIN_DATE = '2026-06-15';
+
+function parseTimeMachineDate(value) {
+    const raw = String(value || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+
+    const min = new Date(`${TIME_MACHINE_MIN_DATE}T00:00:00.000Z`);
+    const selected = new Date(`${raw}T23:59:59.999Z`);
+    const now = new Date();
+
+    if (Number.isNaN(selected.getTime()) || selected < min || selected > now) return null;
+    return selected;
+}
+
+function normalizeDemonSnapshotRows(rows = []) {
+    return rows
+        .map(row => ({
+            ...row,
+            id: row.id == null ? null : Number(row.id),
+            position: Number(row.position),
+            time_machine_deleted_placeholder: Boolean(row.time_machine_deleted_placeholder),
+        }))
+        .filter(row => Number.isFinite(row.position))
+        .sort((a, b) => a.position - b.position);
+}
+
+function normalizeHistoricalPositions(rows = []) {
+    return rows
+        .sort((a, b) => Number(a.position) - Number(b.position))
+        .map((row, index) => ({
+            ...row,
+            position: index + 1,
+        }));
+}
+
+function removeHistoricalEntry(rows, demonId) {
+    const id = Number(demonId);
+    const index = rows.findIndex(row => Number(row.id) === id);
+    if (index === -1) return null;
+    const [removed] = rows.splice(index, 1);
+    return removed;
+}
+
+function undoHistoricalAdd(rows, log) {
+    const newPosition = Number(log.new_position);
+    if (!Number.isFinite(newPosition)) return rows;
+
+    const removed = removeHistoricalEntry(rows, log.demon_id);
+
+    rows.forEach(row => {
+        if (Number(row.position) > newPosition) {
+            row.position = Number(row.position) - 1;
+        }
+    });
+
+    if (!removed) {
+        rows = normalizeHistoricalPositions(rows);
+    }
+
+    return rows;
+}
+
+function undoHistoricalDelete(rows, log) {
+    const oldPosition = Number(log.old_position);
+    if (!Number.isFinite(oldPosition)) return rows;
+
+    rows.forEach(row => {
+        if (Number(row.position) >= oldPosition) {
+            row.position = Number(row.position) + 1;
+        }
+    });
+
+    rows.push({
+        id: null,
+        name: log.demon_name || 'Deleted Level',
+        author: 'Unknown',
+        position: oldPosition,
+        requirement: 0,
+        level_id: null,
+        showcase_url: null,
+        showcase_link: null,
+        records: [],
+        list_type: log.list_type,
+        time_machine_deleted_placeholder: true,
+        time_machine_original_demon_id: log.demon_id,
+    });
+
+    return rows;
+}
+
+function undoHistoricalMove(rows, log) {
+    const oldPosition = Number(log.old_position);
+    const newPosition = Number(log.new_position);
+
+    if (!Number.isFinite(oldPosition) || !Number.isFinite(newPosition)) return rows;
+
+    const moved = removeHistoricalEntry(rows, log.demon_id) || {
+        id: log.demon_id == null ? null : Number(log.demon_id),
+        name: log.demon_name || 'Archived Level',
+        author: 'Unknown',
+        position: oldPosition,
+        requirement: 0,
+        level_id: null,
+        showcase_url: null,
+        showcase_link: null,
+        records: [],
+        list_type: log.list_type,
+        time_machine_deleted_placeholder: true,
+        time_machine_original_demon_id: log.demon_id,
+    };
+
+    if (newPosition < oldPosition) {
+        rows.forEach(row => {
+            if (Number(row.position) > newPosition && Number(row.position) <= oldPosition) {
+                row.position = Number(row.position) - 1;
+            }
+        });
+    } else if (newPosition > oldPosition) {
+        rows.forEach(row => {
+            if (Number(row.position) >= oldPosition && Number(row.position) < newPosition) {
+                row.position = Number(row.position) + 1;
+            }
+        });
+    }
+
+    moved.position = oldPosition;
+    rows.push(moved);
+
+    return rows;
+}
+
+
+async function queryCurrentDemonSnapshotRows(list) {
+    const result = await pool.query(`
+        SELECT 
+            d.*, 
+            CASE 
+                WHEN $1 = 'impossible' THEN d.showcase_url
+                ELSE (
+                    SELECT r.video_url 
+                    FROM records r 
+                    WHERE r.demon_id = d.id 
+                      AND r.status = 'accepted' 
+                      AND r.percentage = 100
+                    ORDER BY r.id ASC 
+                    LIMIT 1
+                )
+            END AS showcase_link,
+            COALESCE(
+                (
+                    SELECT json_agg(json_build_object('percentage', r.percentage))
+                    FROM records r
+                    WHERE r.demon_id = d.id AND r.status = 'accepted'
+                ),
+                '[]'::json
+            ) AS records
+        FROM demons d 
+        WHERE d.list_type = $1
+        ORDER BY d.position ASC
+    `, [list]);
+
+    return result.rows;
+}
+
+async function buildHistoricalDemonSnapshot(currentRows, list, targetDate) {
+    let rows = normalizeDemonSnapshotRows(currentRows);
+
+    const changelogResult = await pool.query(`
+        SELECT demon_id, demon_name, change_type, old_position, new_position, created_at, list_type
+        FROM changelog
+        WHERE list_type = $1
+          AND created_at > $2
+          AND change_type IN ('added', 'moved', 'deleted')
+        ORDER BY created_at DESC, id DESC
+    `, [list, targetDate]);
+
+    for (const log of changelogResult.rows) {
+        if (log.change_type === 'added') {
+            rows = undoHistoricalAdd(rows, log);
+        } else if (log.change_type === 'deleted') {
+            rows = undoHistoricalDelete(rows, log);
+        } else if (log.change_type === 'moved') {
+            rows = undoHistoricalMove(rows, log);
+        }
+
+        rows = normalizeHistoricalPositions(rows);
+    }
+
+    return normalizeHistoricalPositions(rows).map(row => ({
+        ...row,
+        time_machine_snapshot: true,
+    }));
+}
+
+
 const serializeProfileUser = (user) => ({
     displayName: user.display_name || '',
     bio: user.bio || '',
@@ -144,37 +340,18 @@ const serializeProfileUser = (user) => ({
 
 
 app.get('/api/demons', async (req, res) => {
-    const list = req.currentList === 'impossible' ? 'impossible' : 'primary'; 
+    const list = req.currentList === 'impossible' ? 'impossible' : 'primary';
+    const timeMachineDate = parseTimeMachineDate(req.query.date || req.query.time_machine_date);
+
     try {
-        const result = await pool.query(`
-            SELECT 
-                d.*, 
-                CASE 
-                    WHEN $1 = 'impossible' THEN d.showcase_url
-                    ELSE (
-                        SELECT r.video_url 
-                        FROM records r 
-                        WHERE r.demon_id = d.id 
-                          AND r.status = 'accepted' 
-                          AND r.percentage = 100
-                        ORDER BY r.id ASC 
-                        LIMIT 1
-                    )
-                END AS showcase_link,
-                COALESCE(
-                    (
-                        SELECT json_agg(json_build_object('percentage', r.percentage))
-                        FROM records r
-                        WHERE r.demon_id = d.id AND r.status = 'accepted'
-                    ),
-                    '[]'::json
-                ) AS records
-            FROM demons d 
-            WHERE d.list_type = $1
-            ORDER BY d.position ASC
-        `, [list]);
-        
-        res.json(result.rows);
+        const currentRows = await queryCurrentDemonSnapshotRows(list);
+
+        if (timeMachineDate) {
+            const historicalRows = await buildHistoricalDemonSnapshot(currentRows, list, timeMachineDate);
+            return res.json(historicalRows);
+        }
+
+        res.json(currentRows);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Database error" });
@@ -1397,6 +1574,22 @@ app.get('/api/demons/:id', async (req, res) => {
 
         if (demon.list_type !== list) {
             return res.status(400).json({ error: "This level does not belong to the active list." });
+        }
+
+        const timeMachineDate = parseTimeMachineDate(req.query.date || req.query.time_machine_date);
+
+        if (timeMachineDate) {
+            const currentRows = await queryCurrentDemonSnapshotRows(list);
+            const historicalRows = await buildHistoricalDemonSnapshot(currentRows, list, timeMachineDate);
+            const historicalDemon = historicalRows.find(row => Number(row.id) === Number(demonId));
+
+            if (!historicalDemon) {
+                return res.status(404).json({ error: "This level did not exist on the selected time machine date." });
+            }
+
+            demon.position = historicalDemon.position;
+            demon.time_machine_snapshot = true;
+            demon.time_machine_date = req.query.date || req.query.time_machine_date;
         }
 
         const recordsResult = await pool.query(`
